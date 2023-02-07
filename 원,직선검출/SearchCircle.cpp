@@ -4,7 +4,8 @@
 #include "opencv2/core/types_c.h"
 
 #define CAMERA_DPI 2540
-
+#define CAMERA_WIDTH 1280
+#define CAMERA_HEIGHT 1024
 
 #define HOUGH
 //#define HOUGH_ALT
@@ -43,11 +44,11 @@ int main(int argc, char** argv) {
 
 	// 테스트용 함수
 	//Test();
-
+	
 	int iDistX = 0;
 	int iDistY = 0;
-	
-	Mat srcImage = imread((const char*)"test1_R3.jpg", IMREAD_GRAYSCALE);
+
+	Mat srcImage = imread((const char*)"test5_R2.jpg", IMREAD_GRAYSCALE);
 
 	for (int i = 0; i < 10; i++)
 	{
@@ -55,7 +56,7 @@ int main(int argc, char** argv) {
 		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 40, 1, 3, i);
 #endif
 #ifdef HOUGH_ALT
-		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 9999, 300, 0.9, 1, 3, i);
+		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
 #endif
 	}
 
@@ -207,9 +208,14 @@ int GetDistFromCircle
 	Mat srcImage = Mat(iImageHeight, iImageWidth, CV_8UC1, imagesrc);
 	if (srcImage.empty()) return -1;
 
-	// 이미지 Blur 처리 (노이즈제거)
+	// 이미지 자르기
+	//srcImage = srcImage(cv::Rect(CAMERA_WIDTH / 4, CAMERA_HEIGHT / 4, CAMERA_WIDTH / 2, CAMERA_HEIGHT / 2));
+
+	// 이미지 Blur 처리
 	Mat srcImage_blurred;
+	//GaussianBlur(srcImage, srcImage_blurred, cv::Size(3, 3), 0);
 	GaussianBlur(srcImage, srcImage_blurred, cv::Size(7, 7), 1.5, 1.5);
+
 
 	// 이미지 중심 구한다.
 	cv::Point PCenterOfScreen;
@@ -238,7 +244,7 @@ int GetDistFromCircle
 
 	// 원이 검출될 때까지 canny 값 내리면서 반복수행
 	double local_dbThreshold_canny = dbThreshold_canny;
-	int iboundary = 50;
+	int iboundary = 0;
 	while (local_dbThreshold_canny > iboundary)
 	{
 #ifdef HOUGH
@@ -299,7 +305,7 @@ int GetDistFromCircle
 	//imshow("orgsrc", srcImage);
 	//imshow("GetCenterOfCircle", dstImageCircle);
 	char cArrFileName[100] = { 0, };
-	sprintf(cArrFileName, "test1_R3\\test%d.jpg", iIndex);
+	sprintf(cArrFileName, "test5_R2\\test%d.jpg", iIndex);
 	imwrite(cArrFileName, dstImageCircle);
 
 	// 아무키가 눌리기 전까지 대기
