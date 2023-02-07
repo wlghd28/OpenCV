@@ -3,6 +3,12 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/core/types_c.h"
 
+#define CAMERA_DPI 2540
+
+
+#define HOUGH
+//#define HOUGH_ALT
+
 using namespace cv;
 using namespace std;
 
@@ -18,13 +24,18 @@ int Test();	// 테스트용
 // double dbThreshold_detection // 축적 배열에서 원검출을 위한 임계값 (값이 커질 수록 정확, 작을 수록 모호)
 int GetDistFromCircle
 (
-	const char* imagesrc, 
-	int* pDistX, 
-	int* pDistY, 
-	double dbDp, 
-	double dbMindist, 
-	double dbThreshold_canny, 
-	double dbThreshold_detection
+	unsigned char* imagesrc,
+	int iImageWidth,
+	int iImageHeight,
+	int* pDistX,
+	int* pDistY,
+	double dbDp,
+	double dbMindist,
+	double dbThreshold_canny,
+	double dbThreshold_detection,
+	double dbminRadius,
+	double dbmaxRadius,
+	int iIndex
 );
 
 //project main function
@@ -35,8 +46,20 @@ int main(int argc, char** argv) {
 
 	int iDistX = 0;
 	int iDistY = 0;
+	
+	Mat srcImage = imread((const char*)"test1_R3.jpg", IMREAD_GRAYSCALE);
 
-	GetDistFromCircle("sample02.jpg" , &iDistX, &iDistY, 1, 150, 300, 40);
+	for (int i = 0; i < 10; i++)
+	{
+#ifdef HOUGH
+		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 40, 1, 3, i);
+#endif
+#ifdef HOUGH_ALT
+		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 9999, 300, 0.9, 1, 3, i);
+#endif
+	}
+
+	//GetDistFromCircle("sample02.jpg" , &iDistX, &iDistY, 1, 150, 300, 40);
 
 	return 0;
 }
@@ -165,46 +188,89 @@ int Test()
 // 이 함수는 검출된 원이 1개일 경우에만 정상작동한다.
 int GetDistFromCircle
 (
-	const char* imagesrc, 
-	int* pDistX, 
-	int* pDistY, 
-	double dbDp, 
-	double dbMindist, 
-	double dbThreshold_canny, 
-	double dbThreshold_detection
+	unsigned char* imagesrc,
+	int iImageWidth,
+	int iImageHeight,
+	int* pDistX,
+	int* pDistY,
+	double dbDp,
+	double dbMindist,
+	double dbThreshold_canny,
+	double dbThreshold_detection,
+	double dbminRadius,
+	double dbmaxRadius,
+	int iIndex
 )
 {
 	// 이미지소스 불러온다.
-	Mat srcImage = imread(imagesrc, IMREAD_GRAYSCALE);
+	//Mat srcImage = imread((const char*)imagesrc, IMREAD_GRAYSCALE);
+	Mat srcImage = Mat(iImageHeight, iImageWidth, CV_8UC1, imagesrc);
 	if (srcImage.empty()) return -1;
 
-	// 이미지소스 흑백화
-	Mat dstImageCircle(srcImage.size(), CV_8UC3);
-	cvtColor(srcImage, dstImageCircle, COLOR_GRAY2BGR);
+	// 이미지 Blur 처리 (노이즈제거)
+	Mat srcImage_blurred;
+	GaussianBlur(srcImage, srcImage_blurred, cv::Size(7, 7), 1.5, 1.5);
 
 	// 이미지 중심 구한다.
-	Point PCenterOfScreen;
+	cv::Point PCenterOfScreen;
 	PCenterOfScreen.x = (int)(srcImage.cols / 2);
 	PCenterOfScreen.y = (int)(srcImage.rows / 2);
 	//printf("이미지 중심 x,y : %d, %d\n", PCenterOfScreen.x, PCenterOfScreen.y);
+
+	// 이미지소스 컬러화
+	Mat dstImageCircle;	
+	dstImageCircle = Mat(srcImage.size(), CV_8UC3);
+	cvtColor(srcImage, dstImageCircle, COLOR_GRAY2BGR);
 	line(dstImageCircle, PCenterOfScreen, PCenterOfScreen, Scalar::all(0), 2);
+	
+
+
+	// 검출될 원의 최소 반지름, 최대 반지름 mm to pixel
+	double dbDPI = (double)CAMERA_DPI;	// Huaray 카메라의 해상도 = 2540 DPI
+	int iminRadiusPixel = (int)((dbminRadius * dbDPI) / 25.4);
+	int imaxRadiusPixel = (int)((dbmaxRadius * dbDPI) / 25.4);
+
+	//printf("%d, %d\n", iminRadiusPixel, imaxRadiusPixel);
 
 	// 원 검출
-	int iCircleSize = 0;
 	//Mat circles;
 	vector <Vec3f> circles;
-	HoughCircles(srcImage, circles, HOUGH_GRADIENT, dbDp, dbMindist, dbThreshold_canny, dbThreshold_detection);
-	iCircleSize = circles.size();
+
+	// 원이 검출될 때까지 canny 값 내리면서 반복수행
+	double local_dbThreshold_canny = dbThreshold_canny;
+	int iboundary = 50;
+	while (local_dbThreshold_canny > iboundary)
+	{
+#ifdef HOUGH
+		HoughCircles(srcImage_blurred, circles, HOUGH_GRADIENT, dbDp, dbMindist, local_dbThreshold_canny, dbThreshold_detection, iminRadiusPixel, imaxRadiusPixel);
+#endif
+#ifdef HOUGH_ALT
+		HoughCircles(srcImage_blurred, circles, HOUGH_GRADIENT_ALT, dbDp, dbMindist, local_dbThreshold_canny, dbThreshold_detection, iminRadiusPixel, imaxRadiusPixel);
+#endif
+		if (circles.size() > 0) break;
+		local_dbThreshold_canny -= 10;
+	}
+
+	if (local_dbThreshold_canny <= iboundary) return -1;
+
+	// 원이 검출될 때까지 detection 값 내리면서 반복수행
+	//double local_dbThreshold_detection = dbThreshold_detection;
+	//while (local_dbThreshold_detection > 0)
+	//{
+	//	HoughCircles(srcImage_blurred, circles, HOUGH_GRADIENT, dbDp, dbMindist, dbThreshold_canny, local_dbThreshold_detection, iminRadiusPixel, imaxRadiusPixel);
+	//	if (circles.size() > 0)
+	//		break;
+	//	local_dbThreshold_detection -= 5;
+	//}
+
+	int iCircleSize = circles.size();
 	//cout << "circles.size()=" << iCircleSize << endl;
 
-	// 검출된 원이 1개 이상이면 멈춤
-	//if (iCircleSize != 1) return -1;
-
 	Vec3f params_circle;
-	Point PCenterOfCircle;
+	cv::Point PCenterOfCircle;
 	int r = 0;
 
-	for (int i = 0; i < circles.size(); i++)
+	for (int i = 0; i < iCircleSize; i++)
 	{
 		params_circle = circles[i];
 		PCenterOfCircle.x = cvRound(params_circle[0]);
@@ -213,9 +279,10 @@ int GetDistFromCircle
 		//printf("circles[%2d]:(cx, cy)=(%d, %d), r = %d\n", i, PCenterOfCircle.x, PCenterOfCircle.y, r);
 
 		// 원 그리기 (테스트용)
+	
 		circle(dstImageCircle, PCenterOfCircle, r, Scalar(0, 0, 255), 2);
 		line(dstImageCircle, PCenterOfCircle, PCenterOfCircle, Scalar(0, 0, 255), 2);
-
+		
 		// 화면상의 중심으로부터 검출된 원의 중심사이의 거리 구하기 (X, Y) 픽셀단위
 		// 검출된 원 중심 - 화면상의 중심
 		(*pDistX) = (int)(PCenterOfCircle.x - PCenterOfScreen.x);
@@ -225,23 +292,19 @@ int GetDistFromCircle
 		//printf("Distance from Circle : %d, %d\n", PCenterOfCircle.x, PCenterOfCircle.y);
 	}
 
-	// 화면 중심과 원의 중심사이 직선을 긋는다. (테스트용)
-	//line(dstImageCircle, PCenterOfScreen, PCenterOfCircle, Scalar::all(0), 2);
-
-	//// 이미지 저장(테스트용)
-	//Point PTest1, PTest2;
-	//PTest1.x = 300;
-	//PTest1.y = 0;
-	//PTest2.x = 400;
-	//PTest2.y = 0;
-	//line(dstImageCircle, PTest1, PTest2, Scalar(0, 0, 255), 2);
-	//imwrite("test.jpg", dstImageCircle);
-
 	// 이미지 출력 (테스트용)
-	imshow("GetCenterOfCircle", dstImageCircle);
+	// 화면 중심과 원의 중심사이 직선을 긋는다. (테스트용)
+	line(dstImageCircle, PCenterOfScreen, PCenterOfCircle, Scalar::all(0), 2);
+
+	//imshow("orgsrc", srcImage);
+	//imshow("GetCenterOfCircle", dstImageCircle);
+	char cArrFileName[100] = { 0, };
+	sprintf(cArrFileName, "test1_R3\\test%d.jpg", iIndex);
+	imwrite(cArrFileName, dstImageCircle);
 
 	// 아무키가 눌리기 전까지 대기
 	waitKey();
+	
 
 	return 0;
 }
