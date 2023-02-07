@@ -32,7 +32,8 @@ int GetDistFromCircle
 	int* pDistY,
 	double dbDp,
 	double dbMindist,
-	double dbThreshold_canny,
+	double dbThreshold_max_canny,
+	double dbThreshold_min_canny,
 	double dbThreshold_detection,
 	double dbminRadius,
 	double dbmaxRadius,
@@ -53,7 +54,7 @@ int main(int argc, char** argv) {
 	for (int i = 0; i < 10; i++)
 	{
 #ifdef HOUGH
-		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 40, 1, 3, i);
+		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 0, 40, 1, 3, i);
 #endif
 #ifdef HOUGH_ALT
 		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
@@ -196,7 +197,8 @@ int GetDistFromCircle
 	int* pDistY,
 	double dbDp,
 	double dbMindist,
-	double dbThreshold_canny,
+	double dbThreshold_max_canny,
+	double dbThreshold_min_canny,
 	double dbThreshold_detection,
 	double dbminRadius,
 	double dbmaxRadius,
@@ -208,8 +210,7 @@ int GetDistFromCircle
 	Mat srcImage = Mat(iImageHeight, iImageWidth, CV_8UC1, imagesrc);
 	if (srcImage.empty()) return -1;
 
-	// 이미지 자르기
-	//srcImage = srcImage(cv::Rect(CAMERA_WIDTH / 4, CAMERA_HEIGHT / 4, CAMERA_WIDTH / 2, CAMERA_HEIGHT / 2));
+	srcImage = srcImage(cv::Rect(CAMERA_WIDTH / 4, CAMERA_HEIGHT / 4, CAMERA_WIDTH / 2, CAMERA_HEIGHT / 2));
 
 	// 이미지 Blur 처리
 	Mat srcImage_blurred;
@@ -243,9 +244,9 @@ int GetDistFromCircle
 	vector <Vec3f> circles;
 
 	// 원이 검출될 때까지 canny 값 내리면서 반복수행
-	double local_dbThreshold_canny = dbThreshold_canny;
-	int iboundary = 0;
-	while (local_dbThreshold_canny > iboundary)
+	double local_dbThreshold_canny = dbThreshold_max_canny;
+	double local_dbThershold_min_canny = dbThreshold_min_canny;
+	while (local_dbThreshold_canny > local_dbThershold_min_canny)
 	{
 #ifdef HOUGH
 		HoughCircles(srcImage_blurred, circles, HOUGH_GRADIENT, dbDp, dbMindist, local_dbThreshold_canny, dbThreshold_detection, iminRadiusPixel, imaxRadiusPixel);
@@ -257,7 +258,7 @@ int GetDistFromCircle
 		local_dbThreshold_canny -= 10;
 	}
 
-	if (local_dbThreshold_canny <= iboundary) return -1;
+	if (local_dbThreshold_canny <= local_dbThershold_min_canny) return -1;
 
 	// 원이 검출될 때까지 detection 값 내리면서 반복수행
 	//double local_dbThreshold_detection = dbThreshold_detection;
@@ -311,6 +312,5 @@ int GetDistFromCircle
 	// 아무키가 눌리기 전까지 대기
 	waitKey();
 	
-
 	return 0;
 }
