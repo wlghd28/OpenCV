@@ -2,13 +2,15 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/core/types_c.h"
+#include <windows.h>
 
 #define CAMERA_DPI 2540
 #define CAMERA_WIDTH 1280
 #define CAMERA_HEIGHT 1024
 
-#define HOUGH
+//#define HOUGH
 //#define HOUGH_ALT
+#define CONTOUR
 
 using namespace cv;
 using namespace std;
@@ -40,29 +42,55 @@ int GetDistFromCircle
 	int iIndex
 );
 
+// pDistX, pDistY : 값이 구해질 픽셀거리변수
+// imagesrc : 이미지 경로
+// iThresholdBlockSize : Threshold 블록 사이즈 (무조건 홀수여야 함)
+// dbThresholdOffset : 임계값을 구하기 위해 평균 및 가중평균에서 뺄 값
+// dbMinArea : 검출된 등고선 좌표를 근사화한 좌표들 사이 거리의 최소 값
+// dbMinRatio : ??
+int GetDistFromContours
+(
+	unsigned char* imagesrc,
+	int iImageWidth,
+	int iImageHeight,
+	int* pDistX,
+	int* pDistY,
+	int iThresholdBlockSize,
+	double dbThresholdOffset,
+	double dbMinArea,
+	double dbMinRatio,
+	int iIndex
+);
+
+
+
+
 //project main function
 int main(int argc, char** argv) {
 
 	// 테스트용 함수
 	//Test();
-	
+
 	int iDistX = 0;
 	int iDistY = 0;
 
-	Mat srcImage = imread((const char*)"test5_R2.jpg", IMREAD_GRAYSCALE);
-
-	for (int i = 0; i < 10; i++)
+	char cbuf[256] = { 0, };
+	Mat srcImage;
+	//srcImage = imread((const char*)"test1_R2.jpg", IMREAD_GRAYSCALE);
+	for (int i = 0; i < 8; i++)
 	{
+		sprintf(cbuf, "test%d_R.bmp", i + 1);
+		srcImage = imread((const char*)cbuf, IMREAD_GRAYSCALE);
 #ifdef HOUGH
-		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 0, 40, 1, 3, i);
+		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 0, 40, 1.3, 1.7, i + 1);
 #endif
 #ifdef HOUGH_ALT
 		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
 #endif
+#ifdef CONTOUR
+		GetDistFromContours((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 127, 5, 30000, 0, i + 1);
+#endif
 	}
-
-	//GetDistFromCircle("sample02.jpg" , &iDistX, &iDistY, 1, 150, 300, 40);
-
 	return 0;
 }
 
@@ -205,18 +233,26 @@ int GetDistFromCircle
 	int iIndex
 )
 {
+	int starttime = 0;
+	int endtime = 0;
+
+	starttime = GetTickCount64();
+
 	// 이미지소스 불러온다.
 	//Mat srcImage = imread((const char*)imagesrc, IMREAD_GRAYSCALE);
 	Mat srcImage = Mat(iImageHeight, iImageWidth, CV_8UC1, imagesrc);
 	if (srcImage.empty()) return -1;
 
-	srcImage = srcImage(cv::Rect(CAMERA_WIDTH / 4, CAMERA_HEIGHT / 4, CAMERA_WIDTH / 2, CAMERA_HEIGHT / 2));
+	int iCutStartX = 100;
+	int iCutStartY = 100;
+
+	srcImage = srcImage(cv::Rect(iCutStartX, iCutStartY, CAMERA_WIDTH - iCutStartX * 2, CAMERA_HEIGHT  - iCutStartY * 2));
 
 	// 이미지 Blur 처리
 	Mat srcImage_blurred;
 	//GaussianBlur(srcImage, srcImage_blurred, cv::Size(3, 3), 0);
-	GaussianBlur(srcImage, srcImage_blurred, cv::Size(7, 7), 1.5, 1.5);
-
+	GaussianBlur(srcImage, srcImage_blurred, cv::Size(7, 7), 1.5, 1.5, BORDER_DEFAULT);
+	//bilateralFilter(srcImage, srcImage_blurred, -1, 50, 50, BORDER_DEFAULT);
 
 	// 이미지 중심 구한다.
 	cv::Point PCenterOfScreen;
@@ -256,7 +292,13 @@ int GetDistFromCircle
 #endif
 		if (circles.size() > 0) break;
 		local_dbThreshold_canny -= 10;
+		//local_dbThreshold_canny--;
+		//local_dbThreshold_canny -= 0.1;
 	}
+
+	endtime = GetTickCount64();
+
+	printf("time : %d\n", endtime - starttime);
 
 	if (local_dbThreshold_canny <= local_dbThershold_min_canny) return -1;
 
@@ -306,11 +348,152 @@ int GetDistFromCircle
 	//imshow("orgsrc", srcImage);
 	//imshow("GetCenterOfCircle", dstImageCircle);
 	char cArrFileName[100] = { 0, };
-	sprintf(cArrFileName, "test5_R2\\test%d.jpg", iIndex);
+	sprintf(cArrFileName, "test%d_L\\test%d.jpg", iIndex, iIndex);
+	//sprintf(cArrFileName, "test1_R3\\test%d.jpg", iIndex);
 	imwrite(cArrFileName, dstImageCircle);
 
 	// 아무키가 눌리기 전까지 대기
 	waitKey();
 	
+
+	return 0;
+}
+
+
+
+int GetDistFromContours
+(
+	unsigned char* imagesrc,
+	int iImageWidth,
+	int iImageHeight,
+	int* pDistX,
+	int* pDistY,
+	int iThresholdBlockSize,
+	double dbThresholdOffset,
+	double dbMinArea,
+	double dbMinRatio,
+	int iIndex
+)
+{
+	if (iThresholdBlockSize % 2 == 0)
+		iThresholdBlockSize--;
+	
+	if (iThresholdBlockSize < 3)
+		iThresholdBlockSize = 3;
+
+
+	int starttime = 0;
+	int endtime = 0;
+
+	starttime = GetTickCount64();
+
+	// 이미지소스 불러온다.
+	//Mat srcImage = imread((const char*)imagesrc, IMREAD_GRAYSCALE);
+	Mat srcImage = Mat(iImageHeight, iImageWidth, CV_8UC1, imagesrc);
+	if (srcImage.empty()) return -1;
+
+	int iCutStartX = 100;
+	int iCutStartY = 100;
+
+	srcImage = srcImage(cv::Rect(iCutStartX, iCutStartY, CAMERA_WIDTH - iCutStartX * 2, CAMERA_HEIGHT - iCutStartY * 2));
+
+	// 흑백 이미지 Blur 처리
+	Mat srcImage_blurred;
+	//GaussianBlur(srcImage, srcImage_blurred, cv::Size(3, 3), 0);
+	//GaussianBlur(srcImage, srcImage_blurred, cv::Size(7, 7), 1.5, 1.5, BORDER_DEFAULT);
+	bilateralFilter(srcImage, srcImage_blurred, -1, 10, 5, BORDER_DEFAULT);
+
+	// 이미지 중심 구한다.
+	cv::Point PCenterOfScreen;
+	PCenterOfScreen.x = (int)(srcImage.cols / 2);
+	PCenterOfScreen.y = (int)(srcImage.rows / 2);
+	//printf("이미지 중심 x,y : %d, %d\n", PCenterOfScreen.x, PCenterOfScreen.y);
+
+	// 이미지소스 컬러화 (테스트 용)
+	Mat srcImage_color;
+	srcImage_color = Mat(srcImage.size(), CV_8UC3);
+	cvtColor(srcImage, srcImage_color, COLOR_GRAY2BGR);
+	line(srcImage_color, PCenterOfScreen, PCenterOfScreen, Scalar::all(0), 2);
+
+
+	// 적응형 Threshold 적용
+	//threshold(srcImage_blurred, srcImage_blurred, 169, 255, THRESH_BINARY_INV);
+	adaptiveThreshold(srcImage_blurred, srcImage_blurred, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, iThresholdBlockSize, dbThresholdOffset);
+
+	// 평활화
+	equalizeHist(srcImage_blurred, srcImage_blurred);
+
+	//imshow("threshold", srcImage_blurred);
+
+	// 등고선 찾기 (findContours) 
+	vector <vector<Point>> contours;
+	findContours(srcImage_blurred, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE/*CHAIN_APPROX_SIMPLE*/, Point(0, 0));
+
+	// 등고선 검출 실패
+	if (contours.size() <= 0) return -1;
+
+	// 찾은 등고선 그리기
+	//drawContours(srcImage_color, contours, -1, (255, 0, 0), 2);
+
+
+	 /// Approximate contours to polygons + get bounding rects and circles
+	bool bCheckDetection = false;
+	int ivtc = 0;
+	double dblen = 0;
+	double dbarea = 0;
+	double dbratio = 0;
+	double dbmin_area = (double)dbMinArea;
+	double dbmin_ratio = (double)dbMinRatio * 0.1;
+	//Rect rc;
+	Point2f center;
+	float fradius;
+	vector<Point> approx;
+	for (vector<Point> &pts : contours)
+	{
+		approxPolyDP(pts, approx, arcLength(pts, true) * 0.02, true);
+
+		ivtc = (int)approx.size();
+		if (4 < ivtc)
+		{
+			dblen = arcLength(pts, true);
+			dbarea = contourArea(pts);
+			dbratio = 4.0 * CV_PI * dbarea / (dblen * dblen);
+			if (dbmin_ratio < dbratio && dbmin_area < dbarea)
+			{
+				//rc = boundingRect(pts);
+				//rectangle(srcImage_color, rc, (0, 0, 255), 1);
+				minEnclosingCircle(pts, center, fradius);
+				circle(srcImage_color, center, (int)fradius, (0, 0, 255), 2, 8, 0);
+
+				// 검출된 원 중심 - 화면상의 중심
+				(*pDistX) = (int)(center.x - PCenterOfScreen.x);
+				(*pDistY) = (int)(center.y - PCenterOfScreen.y);
+
+				printf("Distance from Circle : %d, %d\n", (*pDistX), (*pDistY));
+				bCheckDetection = true;
+			}
+		}
+	}
+
+	endtime = GetTickCount64();
+	printf("time : %d\n", endtime - starttime);
+
+	if (!bCheckDetection) return -1;
+
+
+	// 이미지 출력 (테스트용)
+	// 화면 중심과 원의 중심사이 직선을 긋는다. (테스트용)
+	line(srcImage_color, PCenterOfScreen, center, Scalar::all(0), 2);
+
+	char cArrFileName[100] = { 0, };
+	sprintf(cArrFileName, "test%d_R\\contours%d.jpg", iIndex, iIndex);
+	//sprintf(cArrFileName, "test1_R2\\contours%d.jpg", iIndex);
+	imwrite(cArrFileName, srcImage_color);
+	imshow("test", srcImage_color);
+
+	// 아무키가 눌리기 전까지 대기
+	waitKey();
+
+
 	return 0;
 }
