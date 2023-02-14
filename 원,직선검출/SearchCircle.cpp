@@ -8,9 +8,10 @@
 #define CAMERA_WIDTH 1280
 #define CAMERA_HEIGHT 1024
 
-#define HOUGH
+//#define HOUGH
 //#define HOUGH_ALT
-#define CONTOUR
+//#define CONTOUR
+#define RANSAC
 
 using namespace cv;
 using namespace std;
@@ -25,7 +26,7 @@ int Test();	// 테스트용
 // double dbThreshold_mindist // 검출할 원의 최소거리
 // double dbThreshold_canny // 이미지를 흑백화 할 때 쓰이는 임계 값
 // double dbThreshold_detection // 축적 배열에서 원검출을 위한 임계값 (값이 커질 수록 정확, 작을 수록 모호)
-int GetDistFromCircle
+int GetDistFromCircles
 (
 	unsigned char* imagesrc,
 	int iImageWidth,
@@ -63,6 +64,19 @@ int GetDistFromContours
 );
 
 
+int GetDistFromRANSAC
+(
+	unsigned char* imagesrc,
+	int iImageWidth,
+	int iImageHeight,
+	int iIndex
+);
+float verifyCircle(cv::Mat dt, cv::Point2f center, float radius, std::vector<cv::Point2f>& inlierSet);
+inline void getCircle(cv::Point2f& p1, cv::Point2f& p2, cv::Point2f& p3, cv::Point2f& center, float& radius);
+std::vector<cv::Point2f> getPointPositions(cv::Mat binaryImage);
+
+
+
 //project main function
 int main(int argc, char** argv) {
 
@@ -74,19 +88,22 @@ int main(int argc, char** argv) {
 
 	char cbuf[256] = { 0, };
 	Mat srcImage;
-	//srcImage = imread((const char*)"test1_R2.jpg", IMREAD_GRAYSCALE);
+	//rcImage = imread((const char*)"test6_R2.jpg", IMREAD_GRAYSCALE);
 	for (int i = 0; i < 8; i++)
 	{
-		sprintf(cbuf, "test%d_R.bmp", i + 1);
+		sprintf(cbuf, "test%d_L.bmp", i + 1);
 		srcImage = imread((const char*)cbuf, IMREAD_GRAYSCALE);
 #ifdef HOUGH
-		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 0, 40, 1.3, 1.7, i + 1);
+		GetDistFromCircles((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 0, 40, 1.3, 1.7, i + 1);
 #endif
 #ifdef HOUGH_ALT
-		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
+		GetDistFromCircles((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
 #endif
 #ifdef CONTOUR
 		GetDistFromContours((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 127, 5, 50000, 0, i + 1);
+#endif
+#ifdef RANSAC
+		GetDistFromRANSAC((unsigned char*)srcImage.ptr(), 1280, 1024, i + 1);
 #endif
 	}
 
@@ -217,7 +234,7 @@ int Test()
 //double dbThreshold_canny = 500;
 //double dbThreshold_detection = 50; // 축적 배열에서 원검출을 위한 임계값
 // 이 함수는 검출된 원이 1개일 경우에만 정상작동한다.
-int GetDistFromCircle
+int GetDistFromCircles
 (
 	unsigned char* imagesrc,
 	int iImageWidth,
@@ -352,9 +369,10 @@ int GetDistFromCircle
 	sprintf(cArrFileName, "test%d_L\\test%d.jpg", iIndex, iIndex);
 	//sprintf(cArrFileName, "test1_R3\\test%d.jpg", iIndex);
 	imwrite(cArrFileName, dstImageCircle);
+	imshow(cArrFileName, dstImageCircle);
 
 	// 아무키가 눌리기 전까지 대기
-	waitKey();
+	//waitKey();
 	
 
 	return 0;
@@ -504,4 +522,198 @@ int GetDistFromContours
 
 
 	return 0;
+}
+
+
+// RANSAC
+
+int GetDistFromRANSAC
+(
+	unsigned char* imagesrc,
+	int iImageWidth,
+	int iImageHeight,
+	int iIndex
+)
+{
+	//cv::Mat color = cv::imread("../inputData/CircleDetectGray.jpg");
+	cv::Mat gray = Mat(iImageHeight, iImageWidth, CV_8UC1, imagesrc);
+	cv::Mat color = Mat(gray.size(), CV_8UC3);
+	cvtColor(gray, color, COLOR_GRAY2BGR);
+
+	// 이미지 Blur 처리
+	Mat gray_blurred;
+	//GaussianBlur(gray, gray_blurred, cv::Size(7, 7), 1.5, 1.5, BORDER_DEFAULT);
+	bilateralFilter(gray, gray_blurred, -1, 10, 5, BORDER_DEFAULT);
+
+
+	Mat gray_threshold;
+	double CannyAccThresh = threshold(gray_blurred, gray_threshold, 0, 255, THRESH_BINARY_INV | THRESH_OTSU);
+	double CannyThresh = 0.1 * CannyAccThresh;
+
+	cv::Mat canny;
+	Canny(gray_threshold, canny, CannyThresh, CannyAccThresh);
+	//cv::imshow("canny", canny);
+
+	cv::Mat mask = canny;
+
+
+
+	std::vector<cv::Point2f> edgePositions;
+	edgePositions = getPointPositions(mask);
+
+	// create distance transform to efficiently evaluate distance to nearest edge
+	cv::Mat dt;
+	cv::distanceTransform(255 - mask, dt, DIST_L1, 3);
+
+	//TODO: maybe seed random variable for real random numbers.
+
+	unsigned int nIterations = 0;
+
+	cv::Point2f bestCircleCenter;
+	float bestCircleRadius = 0;
+	float bestCirclePercentage = 0;
+	float minRadius = 150;   // TODO: ADJUST THIS PARAMETER TO YOUR NEEDS, otherwise smaller circles wont be detected or "small noise circles" will have a high percentage of completion
+
+	//float minCirclePercentage = 0.2f;
+	float minCirclePercentage = 0.05f;  // at least 5% of a circle must be present? maybe more...
+
+	int maxNrOfIterations = edgePositions.size();   // TODO: adjust this parameter or include some real ransac criteria with inlier/outlier percentages to decide when to stop
+
+	for (unsigned int its = 0; its < maxNrOfIterations; ++its)
+	{
+		//RANSAC: randomly choose 3 point and create a circle:
+		//TODO: choose randomly but more intelligent, 
+		//so that it is more likely to choose three points of a circle. 
+		//For example if there are many small circles, it is unlikely to randomly choose 3 points of the same circle.
+		unsigned int idx1 = rand() % edgePositions.size();
+		unsigned int idx2 = rand() % edgePositions.size();
+		unsigned int idx3 = rand() % edgePositions.size();
+
+		// we need 3 different samples:
+		if (idx1 == idx2) continue;
+		if (idx1 == idx3) continue;
+		if (idx3 == idx2) continue;
+
+		// create circle from 3 points:
+		cv::Point2f center; float radius;
+		getCircle(edgePositions[idx1], edgePositions[idx2], edgePositions[idx3], center, radius);
+
+		// inlier set unused at the moment but could be used to approximate a (more robust) circle from alle inlier
+		std::vector<cv::Point2f> inlierSet;
+
+		//verify or falsify the circle by inlier counting:
+		float cPerc = verifyCircle(dt, center, radius, inlierSet);
+
+		// update best circle information if necessary
+		if (cPerc >= bestCirclePercentage)
+			if (radius >= minRadius)
+			{
+				bestCirclePercentage = cPerc;
+				bestCircleRadius = radius;
+				bestCircleCenter = center;
+			}
+
+	}
+
+	std::cout << "bestCirclePerc: " << bestCirclePercentage << std::endl;
+	std::cout << "bestCircleRadius: " << bestCircleRadius << std::endl;
+
+	// draw if good circle was found
+	if (bestCirclePercentage >= minCirclePercentage)
+		if (bestCircleRadius >= minRadius);
+	cv::circle(color, bestCircleCenter, bestCircleRadius, cv::Scalar(0, 0, 255), 2);
+
+
+	//cv::imshow("output", color);
+	//cv::imshow("mask", mask);
+	//cv::imwrite("../outputData/1_circle_color.png", color);
+	//cv::imwrite("../outputData/1_circle_mask.png", mask);
+	//cv::imwrite("../outputData/1_circle_normalized.png", normalized);
+	//cv::waitKey(0);
+
+
+	// 이미지 출력 (테스트용)
+	// 화면 중심과 원의 중심사이 직선을 긋는다. (테스-트용)
+	//line(srcImage_color, PCenterOfScreen, center, Scalar::all(0), 2);
+
+	char cArrFileName[100] = { 0, };
+	sprintf(cArrFileName, "test%d_L\\RANSAC%d.jpg", iIndex, iIndex);
+	//sprintf(cArrFileName, "test6_R2\\RANSAC%d.jpg", iIndex);
+	imwrite(cArrFileName, color);
+	imshow(cArrFileName, color);
+
+
+	return 0;
+}
+
+
+float verifyCircle(cv::Mat dt, cv::Point2f center, float radius, std::vector<cv::Point2f>& inlierSet)
+{
+	unsigned int counter = 0;
+	unsigned int inlier = 0;
+	float minInlierDist = 2.0f;
+	float maxInlierDistMax = 100.0f;
+	float maxInlierDist = radius / 25.0f;
+	if (maxInlierDist < minInlierDist) maxInlierDist = minInlierDist;
+	if (maxInlierDist > maxInlierDistMax) maxInlierDist = maxInlierDistMax;
+
+	// choose samples along the circle and count inlier percentage
+	for (float t = 0; t < 2 * 3.14159265359f; t += 0.05f)
+	{
+		counter++;
+		float cX = radius * cos(t) + center.x;
+		float cY = radius * sin(t) + center.y;
+
+		if (cX < dt.cols)
+			if (cX >= 0)
+				if (cY < dt.rows)
+					if (cY >= 0)
+						if (dt.at<float>(cY, cX) < maxInlierDist)
+						{
+							inlier++;
+							inlierSet.push_back(cv::Point2f(cX, cY));
+						}
+	}
+
+	return (float)inlier / float(counter);
+}
+
+
+inline void getCircle(cv::Point2f& p1, cv::Point2f& p2, cv::Point2f& p3, cv::Point2f& center, float& radius)
+{
+	float x1 = p1.x;
+	float x2 = p2.x;
+	float x3 = p3.x;
+
+	float y1 = p1.y;
+	float y2 = p2.y;
+	float y3 = p3.y;
+
+	// PLEASE CHECK FOR TYPOS IN THE FORMULA :)
+	center.x = (x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2);
+	center.x /= (2 * (x1 * (y2 - y3) - y1 * (x2 - x3) + x2 * y3 - x3 * y2));
+
+	center.y = (x1 * x1 + y1 * y1) * (x3 - x2) + (x2 * x2 + y2 * y2) * (x1 - x3) + (x3 * x3 + y3 * y3) * (x2 - x1);
+	center.y /= (2 * (x1 * (y2 - y3) - y1 * (x2 - x3) + x2 * y3 - x3 * y2));
+
+	radius = sqrt((center.x - x1) * (center.x - x1) + (center.y - y1) * (center.y - y1));
+}
+
+
+
+std::vector<cv::Point2f> getPointPositions(cv::Mat binaryImage)
+{
+	std::vector<cv::Point2f> pointPositions;
+
+	for (unsigned int y = 0; y < binaryImage.rows; ++y)
+	{
+		//unsigned char* rowPtr = binaryImage.ptr<unsigned char>(y);
+		for (unsigned int x = 0; x < binaryImage.cols; ++x)
+		{
+			//if(rowPtr[x] > 0) pointPositions.push_back(cv::Point2i(x,y));
+			if (binaryImage.at<unsigned char>(y, x) > 0) pointPositions.push_back(cv::Point2f(x, y));
+		}
+	}
+
+	return pointPositions;
 }
