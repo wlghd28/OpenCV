@@ -8,23 +8,23 @@
 #define CAMERA_WIDTH 1280
 #define CAMERA_HEIGHT 1024
 
-//#define HOUGH
+#define HOUGH
 //#define HOUGH_ALT
 #define CONTOUR
 
 using namespace cv;
 using namespace std;
 
-// ÇÔ¼ö ¿øÇü ¼±¾ğ
-int Test();	// Å×½ºÆ®¿ë
+// í•¨ìˆ˜ ì›í˜• ì„ ì–¸
+int Test();	// í…ŒìŠ¤íŠ¸ìš©
 
 
-// pDistX, pDistY : °ªÀÌ ±¸ÇØÁú ÇÈ¼¿°Å¸®º¯¼ö
-// imagesrc : ÀÌ¹ÌÁö °æ·Î
-// double dbThreshold_dp // dp = 1 >> ÀÔ·Â ÀÌ¹ÌÁö¿Í °°Àº ÇØ»óµµ, dp = 2 >> ÀÔ·Â ÀÌ¹ÌÁöÀÇ Àı¹İ ÇØ»óµµ
-// double dbThreshold_mindist // °ËÃâÇÒ ¿øÀÇ ÃÖ¼Ò°Å¸®
-// double dbThreshold_canny // ÀÌ¹ÌÁö¸¦ Èæ¹éÈ­ ÇÒ ¶§ ¾²ÀÌ´Â ÀÓ°è °ª
-// double dbThreshold_detection // ÃàÀû ¹è¿­¿¡¼­ ¿ø°ËÃâÀ» À§ÇÑ ÀÓ°è°ª (°ªÀÌ Ä¿Áú ¼ö·Ï Á¤È®, ÀÛÀ» ¼ö·Ï ¸ğÈ£)
+// pDistX, pDistY : ê°’ì´ êµ¬í•´ì§ˆ í”½ì…€ê±°ë¦¬ë³€ìˆ˜ì˜ í¬ì¸í„°
+// imagesrc : ì´ë¯¸ì§€ ê²½ë¡œ
+// double dbThreshold_dp // dp = 1 >> ì…ë ¥ ì´ë¯¸ì§€ì™€ ê°™ì€ í•´ìƒë„, dp = 2 >> ì…ë ¥ ì´ë¯¸ì§€ì˜ ì ˆë°˜ í•´ìƒë„
+// double dbThreshold_mindist // ê²€ì¶œí•  ì›ì˜ ìµœì†Œê±°ë¦¬
+// double dbThreshold_canny // ì´ë¯¸ì§€ë¥¼ í‘ë°±í™” í•  ë•Œ ì“°ì´ëŠ” ì„ê³„ ê°’
+// double dbThreshold_detection // ì¶•ì  ë°°ì—´ì—ì„œ ì›ê²€ì¶œì„ ìœ„í•œ ì„ê³„ê°’ (ê°’ì´ ì»¤ì§ˆ ìˆ˜ë¡ ì •í™•, ì‘ì„ ìˆ˜ë¡ ëª¨í˜¸)
 int GetDistFromCircle
 (
 	unsigned char* imagesrc,
@@ -42,12 +42,12 @@ int GetDistFromCircle
 	int iIndex
 );
 
-// pDistX, pDistY : °ªÀÌ ±¸ÇØÁú ÇÈ¼¿°Å¸®º¯¼ö
-// imagesrc : ÀÌ¹ÌÁö °æ·Î
-// iThresholdBlockSize : Threshold ºí·Ï »çÀÌÁî (¹«Á¶°Ç È¦¼ö¿©¾ß ÇÔ)
-// dbThresholdOffset : ÀÓ°è°ªÀ» ±¸ÇÏ±â À§ÇØ Æò±Õ ¹× °¡ÁßÆò±Õ¿¡¼­ »¬ °ª
-// dbMinArea : °ËÃâµÈ µî°í¼± ÁÂÇ¥¸¦ ±Ù»çÈ­ÇÑ ÁÂÇ¥µé »çÀÌ °Å¸®ÀÇ ÃÖ¼Ò °ª
-// dbMinRatio : ??
+// pDistX, pDistY : ê°’ì´ êµ¬í•´ì§ˆ í”½ì…€ê±°ë¦¬ë³€ìˆ˜ì˜ í¬ì¸í„°
+// imagesrc : ì´ë¯¸ì§€ ê²½ë¡œ
+// iThresholdBlockSize : ì ì‘í˜• Thresholdì— ì“°ì¼ í–‰ë ¬ ì‚¬ì´ì¦ˆ
+// dbThresholdOffset : ì ì‘í˜• Thresholdì— ì ìš©ë  ë•Œ í‰ê·  ê°’ì—ì„œ ë¹¼ì¤„ ê°’
+// dbApproxMinArea : ê²€ì¶œë  ê°ì²´ì˜ ìµœì†Œ ë„“ì´
+// dbApproxMinRatio : ê²€ì¶œë  ê°ì²´ì˜ ë„“ì´ì™€ ì™¸ê³½ì„  ê¸¸ì´ì˜ ìµœì†Œë¹„ìœ¨ (1ì— ê°€ê¹Œìš¸ìˆ˜ë¡ ì›)
 int GetDistFromContours
 (
 	unsigned char* imagesrc,
@@ -63,12 +63,10 @@ int GetDistFromContours
 );
 
 
-
-
 //project main function
 int main(int argc, char** argv) {
 
-	// Å×½ºÆ®¿ë ÇÔ¼ö
+	// í…ŒìŠ¤íŠ¸ìš© í•¨ìˆ˜
 	//Test();
 
 	int iDistX = 0;
@@ -88,36 +86,39 @@ int main(int argc, char** argv) {
 		GetDistFromCircle((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
 #endif
 #ifdef CONTOUR
-		GetDistFromContours((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 127, 5, 30000, 0, i + 1);
+		GetDistFromContours((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 127, 5, 50000, 0, i + 1);
 #endif
 	}
+
+	// ì•„ë¬´í‚¤ê°€ ëˆŒë¦¬ê¸° ì „ê¹Œì§€ ëŒ€ê¸°
+	waitKey();
 	return 0;
 }
 
 int Test()
 {
-	// ÀÌ¹ÌÁö¼Ò½º ºÒ·¯¿Â´Ù.
+	// ì´ë¯¸ì§€ì†ŒìŠ¤ ë¶ˆëŸ¬ì˜¨ë‹¤.
 	Mat srcImage = imread("sample01.jpg", IMREAD_GRAYSCALE);
 	if (srcImage.empty()) return -1;
 
-	// ÀÌ¹ÌÁö Áß½É ±¸ÇÑ´Ù.
-	//printf("ÀÌ¹ÌÁö Áß½É x,y : %d, %d\n", (int)(srcImage.cols / 2), (int)(srcImage.rows / 2));
+	// ì´ë¯¸ì§€ ì¤‘ì‹¬ êµ¬í•œë‹¤.
+	//printf("ì´ë¯¸ì§€ ì¤‘ì‹¬ x,y : %d, %d\n", (int)(srcImage.cols / 2), (int)(srcImage.rows / 2));
 
-	// HoughLines() ¸Å°³º¯¼ö ¼³¸í
-	// src : ÀÔ·ÂÇÒ ÀÌ¹ÌÁö º¯¼ö, Edge detect µÈ ÀÌ¹ÌÁö¸¦ ÀÔ·ÂÇØ¾ß ÇÔ
-	// dst : ÇãÇÁº¯È¯ Á÷¼± °ËÃâ Á¤º¸¸¦ ÀúÀåÇÒ Array
-	// rho : °è»êÇÒ ÇÈ¼¿(¸Å°³ º¯¼ö)ÀÇ ÇØ»óµµ, ±×³É 1À» »ç¿ëÇÏ¸é µÊ. (º¯È¯µÈ ±×·¡ÇÁ¿¡¼­, ¼±¿¡¼­ ¿øÁ¡±îÁöÀÇ ¼öÁ÷ °Å¸®)
-	// theta : °è»êÇÒ °¢µµ(¶óµğ¾È, ¸Å°³º¯¼ö)ÀÇ ÇØ»óµµ, ¼± È¸Àü °¢µµ. (¸ğµç ¹æÇâ¿¡¼­ Á÷¼±À» °ËÃâÇÏ·Á¸é PI / 180 À» »ç¿ëÇÏ¸é µÈ´Ù.)
-	// threshold : ÇãÇÁ º¯È¯µÈ ±×·¡ÇÁ¿¡¼­ ¶óÀÎÀ» °ËÃâÇÏ±â À§ÇÑ ÃÖ¼Ò ±³Â÷ ¼ö
+	// HoughLines() ë§¤ê°œë³€ìˆ˜ ì„¤ëª…
+	// src : ì…ë ¥í•  ì´ë¯¸ì§€ ë³€ìˆ˜, Edge detect ëœ ì´ë¯¸ì§€ë¥¼ ì…ë ¥í•´ì•¼ í•¨
+	// dst : í—ˆí”„ë³€í™˜ ì§ì„  ê²€ì¶œ ì •ë³´ë¥¼ ì €ì¥í•  Array
+	// rho : ê³„ì‚°í•  í”½ì…€(ë§¤ê°œ ë³€ìˆ˜)ì˜ í•´ìƒë„, ê·¸ëƒ¥ 1ì„ ì‚¬ìš©í•˜ë©´ ë¨. (ë³€í™˜ëœ ê·¸ë˜í”„ì—ì„œ, ì„ ì—ì„œ ì›ì ê¹Œì§€ì˜ ìˆ˜ì§ ê±°ë¦¬)
+	// theta : ê³„ì‚°í•  ê°ë„(ë¼ë””ì•ˆ, ë§¤ê°œë³€ìˆ˜)ì˜ í•´ìƒë„, ì„  íšŒì „ ê°ë„. (ëª¨ë“  ë°©í–¥ì—ì„œ ì§ì„ ì„ ê²€ì¶œí•˜ë ¤ë©´ PI / 180 ì„ ì‚¬ìš©í•˜ë©´ ëœë‹¤.)
+	// threshold : í—ˆí”„ ë³€í™˜ëœ ê·¸ë˜í”„ì—ì„œ ë¼ì¸ì„ ê²€ì¶œí•˜ê¸° ìœ„í•œ ìµœì†Œ êµì°¨ ìˆ˜
 
 	int iThreshold1_canny = 0;
 	int iThreshold2_canny = 300;
-	int iThershold_lines = 50; // ÇãÇÁ º¯È¯µÈ ±×·¡ÇÁ¿¡¼­ ¶óÀÎÀ» °ËÃâÇÏ±â À§ÇÑ ÃÖ¼Ò ±³Â÷ ¼ö (°ªÀÌ Å¬¼ö·Ï Á¤È®ÇØÁö°í, ÀÛÀ»¼ö·Ï ¸ğÈ£ÇØÁü)
+	int iThershold_lines = 50; // í—ˆí”„ ë³€í™˜ëœ ê·¸ë˜í”„ì—ì„œ ë¼ì¸ì„ ê²€ì¶œí•˜ê¸° ìœ„í•œ ìµœì†Œ êµì°¨ ìˆ˜ (ê°’ì´ í´ìˆ˜ë¡ ì •í™•í•´ì§€ê³ , ì‘ì„ìˆ˜ë¡ ëª¨í˜¸í•´ì§)
 
 	Mat dstImage(srcImage.size(), CV_8UC3);
 	cvtColor(srcImage, dstImage, COLOR_GRAY2BGR);
 
-	// ¿§Áö °ËÃâ (Á÷¼± °ËÃâ)
+	// ì—£ì§€ ê²€ì¶œ (ì§ì„  ê²€ì¶œ)
 	Mat edges;
 	Canny(dstImage, edges, iThreshold1_canny, iThreshold2_canny);
 
@@ -125,9 +126,9 @@ int Test()
 	vector<Vec2f> lines;
 	HoughLines(edges, lines, 1, CV_PI / 180.0, iThershold_lines);
 	//HoughLines(srcImage, lines, 1, CV_PI / 180.0, iThershold_lines);
-	cout << "lines.size()=" << lines.size() << endl;	// °ËÃâµÈ Á÷¼±ÀÇ °³¼ö
+	cout << "lines.size()=" << lines.size() << endl;	// ê²€ì¶œëœ ì§ì„ ì˜ ê°œìˆ˜
 
-	// °ËÃâÇÑ Á÷¼± ±×¸®±â
+	// ê²€ì¶œí•œ ì§ì„  ê·¸ë¦¬ê¸°
 	Mat edges_lane;
 	threshold(edges, edges_lane, iThreshold1_canny, iThreshold2_canny, THRESH_MASK);
 
@@ -160,10 +161,10 @@ int Test()
 	}
 
 
-	// ¿ø °ËÃâ
-	double dThreshold1_dp = 1; // dp = 1 >> ÀÔ·Â ÀÌ¹ÌÁö¿Í °°Àº ÇØ»óµµ, dp = 2 >> ÀÔ·Â ÀÌ¹ÌÁöÀÇ Àı¹İ ÇØ»óµµ
-	double dThreshold2_mindist = 1;	// °ËÃâÇÒ ¿øÀÇ ÃÖ¼Ò°Å¸®
-	double dParam2 = 30; // ÃàÀû ¹è¿­¿¡¼­ ¿ø°ËÃâÀ» À§ÇÑ ÀÓ°è°ª
+	// ì› ê²€ì¶œ
+	double dThreshold1_dp = 1; // dp = 1 >> ì…ë ¥ ì´ë¯¸ì§€ì™€ ê°™ì€ í•´ìƒë„, dp = 2 >> ì…ë ¥ ì´ë¯¸ì§€ì˜ ì ˆë°˜ í•´ìƒë„
+	double dThreshold2_mindist = 1;	// ê²€ì¶œí•  ì›ì˜ ìµœì†Œê±°ë¦¬
+	double dParam2 = 30; // ì¶•ì  ë°°ì—´ì—ì„œ ì›ê²€ì¶œì„ ìœ„í•œ ì„ê³„ê°’
 
 	//Mat circles;
 	vector <Vec3f> circles;
@@ -188,12 +189,12 @@ int Test()
 		pCenter.x = cx;
 		pCenter.y = cy;
 
-		// ¿ø ±×¸®±â
+		// ì› ê·¸ë¦¬ê¸°
 		circle(dstImageCircle, pCenter, r, Scalar(0, 0, 255), 2);
 	}
 
 
-	// ÀÌ¹ÌÁö Ãâ·Â
+	// ì´ë¯¸ì§€ ì¶œë ¥
 	//imshow("org", srcImage);
 	imshow("edges", edges);
 	//imshow("dstImage", dstImage);
@@ -201,21 +202,21 @@ int Test()
 	//imshow("Circlemage", dstImageCircle);
 
 
-	// ¾Æ¹«Å°°¡ ´­¸®±â Àü±îÁö ´ë±â
+	// ì•„ë¬´í‚¤ê°€ ëˆŒë¦¬ê¸° ì „ê¹Œì§€ ëŒ€ê¸°
 	waitKey();
 
 	return 0;
 }
 
-// È­¸é»óÀÇ Áß½É°ú °ËÃâµÈ ¿øÀÇ Áß½É »çÀÌÀÇ X, Y ÇÈ¼¿°Å¸®¸¦ ±¸ÇØÁØ´Ù.
-// »ó(-) ~ ÇÏ(+), ÁÂ(-) ~ ¿ì(+)
-// pDistX, pDistY : °ªÀÌ ±¸ÇØÁú ÇÈ¼¿°Å¸®º¯¼ö
-// imagesrc : ÀÌ¹ÌÁö °æ·Î
-//double dbThreshold_dp = 1; // dp = 1 >> ÀÔ·Â ÀÌ¹ÌÁö¿Í °°Àº ÇØ»óµµ, dp = 2 >> ÀÔ·Â ÀÌ¹ÌÁöÀÇ Àı¹İ ÇØ»óµµ
-//double dbThreshold_mindist = 2;	// °ËÃâÇÒ ¿øÀÇ ÃÖ¼Ò°Å¸®
+// í™”ë©´ìƒì˜ ì¤‘ì‹¬ê³¼ ê²€ì¶œëœ ì›ì˜ ì¤‘ì‹¬ ì‚¬ì´ì˜ X, Y í”½ì…€ê±°ë¦¬ë¥¼ êµ¬í•´ì¤€ë‹¤.
+// ìƒ(-) ~ í•˜(+), ì¢Œ(-) ~ ìš°(+)
+// pDistX, pDistY : ê°’ì´ êµ¬í•´ì§ˆ í”½ì…€ê±°ë¦¬ë³€ìˆ˜ì˜ í¬ì¸í„°
+// imagesrc : ì´ë¯¸ì§€ ê²½ë¡œ
+//double dbThreshold_dp = 1; // dp = 1 >> ì…ë ¥ ì´ë¯¸ì§€ì™€ ê°™ì€ í•´ìƒë„, dp = 2 >> ì…ë ¥ ì´ë¯¸ì§€ì˜ ì ˆë°˜ í•´ìƒë„
+//double dbThreshold_mindist = 2;	// ê²€ì¶œí•  ì›ì˜ ìµœì†Œê±°ë¦¬
 //double dbThreshold_canny = 500;
-//double dbThreshold_detection = 50; // ÃàÀû ¹è¿­¿¡¼­ ¿ø°ËÃâÀ» À§ÇÑ ÀÓ°è°ª
-// ÀÌ ÇÔ¼ö´Â °ËÃâµÈ ¿øÀÌ 1°³ÀÏ °æ¿ì¿¡¸¸ Á¤»óÀÛµ¿ÇÑ´Ù.
+//double dbThreshold_detection = 50; // ì¶•ì  ë°°ì—´ì—ì„œ ì›ê²€ì¶œì„ ìœ„í•œ ì„ê³„ê°’
+// ì´ í•¨ìˆ˜ëŠ” ê²€ì¶œëœ ì›ì´ 1ê°œì¼ ê²½ìš°ì—ë§Œ ì •ìƒì‘ë™í•œë‹¤.
 int GetDistFromCircle
 (
 	unsigned char* imagesrc,
@@ -238,7 +239,7 @@ int GetDistFromCircle
 
 	starttime = GetTickCount64();
 
-	// ÀÌ¹ÌÁö¼Ò½º ºÒ·¯¿Â´Ù.
+	// ì´ë¯¸ì§€ì†ŒìŠ¤ ë¶ˆëŸ¬ì˜¨ë‹¤.
 	//Mat srcImage = imread((const char*)imagesrc, IMREAD_GRAYSCALE);
 	Mat srcImage = Mat(iImageHeight, iImageWidth, CV_8UC1, imagesrc);
 	if (srcImage.empty()) return -1;
@@ -248,19 +249,19 @@ int GetDistFromCircle
 
 	srcImage = srcImage(cv::Rect(iCutStartX, iCutStartY, CAMERA_WIDTH - iCutStartX * 2, CAMERA_HEIGHT  - iCutStartY * 2));
 
-	// ÀÌ¹ÌÁö Blur Ã³¸®
+	// ì´ë¯¸ì§€ Blur ì²˜ë¦¬
 	Mat srcImage_blurred;
 	//GaussianBlur(srcImage, srcImage_blurred, cv::Size(3, 3), 0);
 	GaussianBlur(srcImage, srcImage_blurred, cv::Size(7, 7), 1.5, 1.5, BORDER_DEFAULT);
 	//bilateralFilter(srcImage, srcImage_blurred, -1, 50, 50, BORDER_DEFAULT);
 
-	// ÀÌ¹ÌÁö Áß½É ±¸ÇÑ´Ù.
+	// ì´ë¯¸ì§€ ì¤‘ì‹¬ êµ¬í•œë‹¤.
 	cv::Point PCenterOfScreen;
 	PCenterOfScreen.x = (int)(srcImage.cols / 2);
 	PCenterOfScreen.y = (int)(srcImage.rows / 2);
-	//printf("ÀÌ¹ÌÁö Áß½É x,y : %d, %d\n", PCenterOfScreen.x, PCenterOfScreen.y);
+	//printf("ì´ë¯¸ì§€ ì¤‘ì‹¬ x,y : %d, %d\n", PCenterOfScreen.x, PCenterOfScreen.y);
 
-	// ÀÌ¹ÌÁö¼Ò½º ÄÃ·¯È­
+	// ì´ë¯¸ì§€ì†ŒìŠ¤ ì»¬ëŸ¬í™”
 	Mat dstImageCircle;	
 	dstImageCircle = Mat(srcImage.size(), CV_8UC3);
 	cvtColor(srcImage, dstImageCircle, COLOR_GRAY2BGR);
@@ -268,18 +269,18 @@ int GetDistFromCircle
 	
 
 
-	// °ËÃâµÉ ¿øÀÇ ÃÖ¼Ò ¹İÁö¸§, ÃÖ´ë ¹İÁö¸§ mm to pixel
-	double dbDPI = (double)CAMERA_DPI;	// Huaray Ä«¸Ş¶óÀÇ ÇØ»óµµ = 2540 DPI
+	// ê²€ì¶œë  ì›ì˜ ìµœì†Œ ë°˜ì§€ë¦„, ìµœëŒ€ ë°˜ì§€ë¦„ mm to pixel
+	double dbDPI = (double)CAMERA_DPI;	// Huaray ì¹´ë©”ë¼ì˜ í•´ìƒë„ = 2540 DPI
 	int iminRadiusPixel = (int)((dbminRadius * dbDPI) / 25.4);
 	int imaxRadiusPixel = (int)((dbmaxRadius * dbDPI) / 25.4);
 
 	//printf("%d, %d\n", iminRadiusPixel, imaxRadiusPixel);
 
-	// ¿ø °ËÃâ
+	// ì› ê²€ì¶œ
 	//Mat circles;
 	vector <Vec3f> circles;
 
-	// ¿øÀÌ °ËÃâµÉ ¶§±îÁö canny °ª ³»¸®¸é¼­ ¹İº¹¼öÇà
+	// ì›ì´ ê²€ì¶œë  ë•Œê¹Œì§€ canny ê°’ ë‚´ë¦¬ë©´ì„œ ë°˜ë³µìˆ˜í–‰
 	double local_dbThreshold_canny = dbThreshold_max_canny;
 	double local_dbThershold_min_canny = dbThreshold_min_canny;
 	while (local_dbThreshold_canny > local_dbThershold_min_canny)
@@ -302,7 +303,7 @@ int GetDistFromCircle
 
 	if (local_dbThreshold_canny <= local_dbThershold_min_canny) return -1;
 
-	// ¿øÀÌ °ËÃâµÉ ¶§±îÁö detection °ª ³»¸®¸é¼­ ¹İº¹¼öÇà
+	// ì›ì´ ê²€ì¶œë  ë•Œê¹Œì§€ detection ê°’ ë‚´ë¦¬ë©´ì„œ ë°˜ë³µìˆ˜í–‰
 	//double local_dbThreshold_detection = dbThreshold_detection;
 	//while (local_dbThreshold_detection > 0)
 	//{
@@ -327,13 +328,13 @@ int GetDistFromCircle
 		r = cvRound(params_circle[2]);
 		//printf("circles[%2d]:(cx, cy)=(%d, %d), r = %d\n", i, PCenterOfCircle.x, PCenterOfCircle.y, r);
 
-		// ¿ø ±×¸®±â (Å×½ºÆ®¿ë)
+		// ì› ê·¸ë¦¬ê¸° (í…ŒìŠ¤íŠ¸ìš©)
 	
 		circle(dstImageCircle, PCenterOfCircle, r, Scalar(0, 0, 255), 2);
 		line(dstImageCircle, PCenterOfCircle, PCenterOfCircle, Scalar(0, 0, 255), 2);
 		
-		// È­¸é»óÀÇ Áß½ÉÀ¸·ÎºÎÅÍ °ËÃâµÈ ¿øÀÇ Áß½É»çÀÌÀÇ °Å¸® ±¸ÇÏ±â (X, Y) ÇÈ¼¿´ÜÀ§
-		// °ËÃâµÈ ¿ø Áß½É - È­¸é»óÀÇ Áß½É
+		// í™”ë©´ìƒì˜ ì¤‘ì‹¬ìœ¼ë¡œë¶€í„° ê²€ì¶œëœ ì›ì˜ ì¤‘ì‹¬ì‚¬ì´ì˜ ê±°ë¦¬ êµ¬í•˜ê¸° (X, Y) í”½ì…€ë‹¨ìœ„
+		// ê²€ì¶œëœ ì› ì¤‘ì‹¬ - í™”ë©´ìƒì˜ ì¤‘ì‹¬
 		(*pDistX) = (int)(PCenterOfCircle.x - PCenterOfScreen.x);
 		(*pDistY) = (int)(PCenterOfCircle.y - PCenterOfScreen.y);
 
@@ -341,8 +342,8 @@ int GetDistFromCircle
 		//printf("Distance from Circle : %d, %d\n", PCenterOfCircle.x, PCenterOfCircle.y);
 	}
 
-	// ÀÌ¹ÌÁö Ãâ·Â (Å×½ºÆ®¿ë)
-	// È­¸é Áß½É°ú ¿øÀÇ Áß½É»çÀÌ Á÷¼±À» ±ß´Â´Ù. (Å×½ºÆ®¿ë)
+	// ì´ë¯¸ì§€ ì¶œë ¥ (í…ŒìŠ¤íŠ¸ìš©)
+	// í™”ë©´ ì¤‘ì‹¬ê³¼ ì›ì˜ ì¤‘ì‹¬ì‚¬ì´ ì§ì„ ì„ ê¸‹ëŠ”ë‹¤. (í…ŒìŠ¤íŠ¸ìš©)
 	line(dstImageCircle, PCenterOfScreen, PCenterOfCircle, Scalar::all(0), 2);
 
 	//imshow("orgsrc", srcImage);
@@ -352,7 +353,7 @@ int GetDistFromCircle
 	//sprintf(cArrFileName, "test1_R3\\test%d.jpg", iIndex);
 	imwrite(cArrFileName, dstImageCircle);
 
-	// ¾Æ¹«Å°°¡ ´­¸®±â Àü±îÁö ´ë±â
+	// ì•„ë¬´í‚¤ê°€ ëˆŒë¦¬ê¸° ì „ê¹Œì§€ ëŒ€ê¸°
 	waitKey();
 	
 
@@ -360,7 +361,12 @@ int GetDistFromCircle
 }
 
 
-
+// pDistX, pDistY : ê°’ì´ êµ¬í•´ì§ˆ í”½ì…€ê±°ë¦¬ë³€ìˆ˜ì˜ í¬ì¸í„°
+// imagesrc : ì´ë¯¸ì§€ ê²½ë¡œ
+// iThresholdBlockSize : ì ì‘í˜• Thresholdì— ì“°ì¼ í–‰ë ¬ ì‚¬ì´ì¦ˆ
+// dbThresholdOffset : ì ì‘í˜• Thresholdì— ì ìš©ë  ë•Œ í‰ê·  ê°’ì—ì„œ ë¹¼ì¤„ ê°’
+// dbApproxMinArea : ê²€ì¶œë  ê°ì²´ì˜ ìµœì†Œ ë„“ì´
+// dbApproxMinRatio : ê²€ì¶œë  ê°ì²´ì˜ ë„“ì´ì™€ ì™¸ê³½ì„  ê¸¸ì´ì˜ ìµœì†Œë¹„ìœ¨ (1ì— ê°€ê¹Œìš¸ìˆ˜ë¡ ì›)
 int GetDistFromContours
 (
 	unsigned char* imagesrc,
@@ -387,7 +393,7 @@ int GetDistFromContours
 
 	starttime = GetTickCount64();
 
-	// ÀÌ¹ÌÁö¼Ò½º ºÒ·¯¿Â´Ù.
+	// ì´ë¯¸ì§€ì†ŒìŠ¤ ë¶ˆëŸ¬ì˜¨ë‹¤.
 	//Mat srcImage = imread((const char*)imagesrc, IMREAD_GRAYSCALE);
 	Mat srcImage = Mat(iImageHeight, iImageWidth, CV_8UC1, imagesrc);
 	if (srcImage.empty()) return -1;
@@ -397,46 +403,47 @@ int GetDistFromContours
 
 	srcImage = srcImage(cv::Rect(iCutStartX, iCutStartY, CAMERA_WIDTH - iCutStartX * 2, CAMERA_HEIGHT - iCutStartY * 2));
 
-	// Èæ¹é ÀÌ¹ÌÁö Blur Ã³¸®
+	// í‘ë°± ì´ë¯¸ì§€ Blur ì²˜ë¦¬
 	Mat srcImage_blurred;
 	//GaussianBlur(srcImage, srcImage_blurred, cv::Size(3, 3), 0);
 	//GaussianBlur(srcImage, srcImage_blurred, cv::Size(7, 7), 1.5, 1.5, BORDER_DEFAULT);
 	bilateralFilter(srcImage, srcImage_blurred, -1, 10, 5, BORDER_DEFAULT);
 
-	// ÀÌ¹ÌÁö Áß½É ±¸ÇÑ´Ù.
+	// ì´ë¯¸ì§€ ì¤‘ì‹¬ êµ¬í•œë‹¤.
 	cv::Point PCenterOfScreen;
 	PCenterOfScreen.x = (int)(srcImage.cols / 2);
 	PCenterOfScreen.y = (int)(srcImage.rows / 2);
-	//printf("ÀÌ¹ÌÁö Áß½É x,y : %d, %d\n", PCenterOfScreen.x, PCenterOfScreen.y);
+	//printf("ì´ë¯¸ì§€ ì¤‘ì‹¬ x,y : %d, %d\n", PCenterOfScreen.x, PCenterOfScreen.y);
 
-	// ÀÌ¹ÌÁö¼Ò½º ÄÃ·¯È­ (Å×½ºÆ® ¿ë)
+	// ì´ë¯¸ì§€ì†ŒìŠ¤ ì»¬ëŸ¬í™” (í…ŒìŠ¤íŠ¸ ìš©)
 	Mat srcImage_color;
 	srcImage_color = Mat(srcImage.size(), CV_8UC3);
 	cvtColor(srcImage, srcImage_color, COLOR_GRAY2BGR);
 	line(srcImage_color, PCenterOfScreen, PCenterOfScreen, Scalar::all(0), 2);
 
 
-	// ÀûÀÀÇü Threshold Àû¿ë
-	//threshold(srcImage_blurred, srcImage_blurred, 169, 255, THRESH_BINARY_INV);
-	adaptiveThreshold(srcImage_blurred, srcImage_blurred, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, iThresholdBlockSize, dbThresholdOffset);
+	// ì ì‘í˜• Threshold ì ìš©
+	Mat srcImage_threshold;
+	//threshold(srcImage_blurred, srcImage_threshold, 169, 255, THRESH_BINARY_INV);
+	adaptiveThreshold(srcImage_blurred, srcImage_threshold, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, iThresholdBlockSize, dbThresholdOffset);
 
-	// ÆòÈ°È­
-	equalizeHist(srcImage_blurred, srcImage_blurred);
+	// í‰í™œí™”
+	equalizeHist(srcImage_threshold, srcImage_threshold);
 
 	//imshow("threshold", srcImage_blurred);
 
-	// µî°í¼± Ã£±â (findContours) 
+	// ë“±ê³ ì„  ì°¾ê¸° (findContours) 
 	vector <vector<Point>> contours;
-	findContours(srcImage_blurred, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE/*CHAIN_APPROX_SIMPLE*/, Point(0, 0));
+	findContours(srcImage_threshold, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE/*CHAIN_APPROX_SIMPLE*/, Point(0, 0));
 
-	// µî°í¼± °ËÃâ ½ÇÆĞ
+	// ë“±ê³ ì„  ê²€ì¶œ ì‹¤íŒ¨
 	if (contours.size() <= 0) return -1;
 
-	// Ã£Àº µî°í¼± ±×¸®±â
+	// ì°¾ì€ ë“±ê³ ì„  ê·¸ë¦¬ê¸°
 	//drawContours(srcImage_color, contours, -1, (255, 0, 0), 2);
 
 
-	 /// Approximate contours to polygons + get bounding rects and circles
+	// Approximate contours to polygons + get bounding rects and circles
 	bool bCheckDetection = false;
 	int ivtc = 0;
 	double dblen = 0;
@@ -465,12 +472,13 @@ int GetDistFromContours
 				minEnclosingCircle(pts, center, fradius);
 				circle(srcImage_color, center, (int)fradius, (0, 0, 255), 2, 8, 0);
 
-				// °ËÃâµÈ ¿ø Áß½É - È­¸é»óÀÇ Áß½É
+				// ê²€ì¶œëœ ì› ì¤‘ì‹¬ - í™”ë©´ìƒì˜ ì¤‘ì‹¬
 				(*pDistX) = (int)(center.x - PCenterOfScreen.x);
 				(*pDistY) = (int)(center.y - PCenterOfScreen.y);
 
 				printf("Distance from Circle : %d, %d\n", (*pDistX), (*pDistY));
 				bCheckDetection = true;
+
 			}
 		}
 	}
@@ -481,18 +489,18 @@ int GetDistFromContours
 	if (!bCheckDetection) return -1;
 
 
-	// ÀÌ¹ÌÁö Ãâ·Â (Å×½ºÆ®¿ë)
-	// È­¸é Áß½É°ú ¿øÀÇ Áß½É»çÀÌ Á÷¼±À» ±ß´Â´Ù. (Å×½ºÆ®¿ë)
+	// ì´ë¯¸ì§€ ì¶œë ¥ (í…ŒìŠ¤íŠ¸ìš©)
+	// í™”ë©´ ì¤‘ì‹¬ê³¼ ì›ì˜ ì¤‘ì‹¬ì‚¬ì´ ì§ì„ ì„ ê¸‹ëŠ”ë‹¤. (í…ŒìŠ¤íŠ¸ìš©)
 	line(srcImage_color, PCenterOfScreen, center, Scalar::all(0), 2);
 
 	char cArrFileName[100] = { 0, };
 	sprintf(cArrFileName, "test%d_R\\contours%d.jpg", iIndex, iIndex);
 	//sprintf(cArrFileName, "test1_R2\\contours%d.jpg", iIndex);
 	imwrite(cArrFileName, srcImage_color);
-	imshow("test", srcImage_color);
+	imshow(cArrFileName, srcImage_color);
 
-	// ¾Æ¹«Å°°¡ ´­¸®±â Àü±îÁö ´ë±â
-	waitKey();
+	// ì•„ë¬´í‚¤ê°€ ëˆŒë¦¬ê¸° ì „ê¹Œì§€ ëŒ€ê¸°
+	//waitKey();
 
 
 	return 0;

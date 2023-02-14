@@ -10,7 +10,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/core/types_c.h"
 
-// ½Ã°è¹İ´ë¹æÇâÈ¸Àü
+// ì‹œê³„ë°˜ëŒ€ë°©í–¥íšŒì „
 int RotateVideo(const char* StrVideoCapturePath, const char* StrVideoWritePath, double dbDegree)
 {
 	int iVideoFPS = 0, iVideoWidth = 0, iVideoHeight = 0;
@@ -49,7 +49,7 @@ int RotateVideo(const char* StrVideoCapturePath, const char* StrVideoWritePath, 
 
 	while (1)
 	{
-		// cap °´Ã¼·ÎºÎÅÍ µ¿¿µ»óÀÇ ÀÌ¹ÌÁö ÇÁ·¹ÀÓÀ» ÀĞ¾îµé¿© ¿øº» ÀÌ¹ÌÁö º¯¼ö¿¡ ÀúÀåÇÑ´Ù.
+		// cap ê°ì²´ë¡œë¶€í„° ë™ì˜ìƒì˜ ì´ë¯¸ì§€ í”„ë ˆì„ì„ ì½ì–´ë“¤ì—¬ ì›ë³¸ ì´ë¯¸ì§€ ë³€ìˆ˜ì— ì €ì¥í•œë‹¤.
 		cap >> orgVideoFrame;
 
 		if (orgVideoFrame.empty())
@@ -57,12 +57,12 @@ int RotateVideo(const char* StrVideoCapturePath, const char* StrVideoWritePath, 
 
 		//cv::imshow("camera img", orgVideoFrame);
 
-		// ÀĞ¾îµéÀÎ ÀÌ¹ÌÁö ÇÁ·¹ÀÓÀ» ½Ã°è¹İ´ë ¹æÇâÀ¸·Î È¸Àü ½ÃÅ²ÈÄ »õ·Î¿î ÀÌ¹ÌÁö º¯¼ö¿¡ ÀúÀåÇÑ´Ù.
+		// ì½ì–´ë“¤ì¸ ì´ë¯¸ì§€ í”„ë ˆì„ì„ ì‹œê³„ë°˜ëŒ€ ë°©í–¥ìœ¼ë¡œ íšŒì „ ì‹œí‚¨í›„ ìƒˆë¡œìš´ ì´ë¯¸ì§€ ë³€ìˆ˜ì— ì €ì¥í•œë‹¤.
 		warpAffine(orgVideoFrame, newVideoFrame, rotateMatrix, videoBox.size());
 
 		//cv::imshow("camera img", newVideoFrame);
 
-		// È¸Àü½ÃÅ² »õ·Î¿î ÀÌ¹ÌÁö ÇÁ·¹ÀÓÀ» write °´Ã¼¿¡ ÀúÀåÇÑ´Ù.
+		// íšŒì „ì‹œí‚¨ ìƒˆë¡œìš´ ì´ë¯¸ì§€ í”„ë ˆì„ì„ write ê°ì²´ì— ì €ì¥í•œë‹¤.
 		write << newVideoFrame;
 
 		if (cv::waitKey(25) == 27)
