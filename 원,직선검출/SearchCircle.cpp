@@ -10,8 +10,8 @@
 
 //#define HOUGH
 //#define HOUGH_ALT
-//#define CONTOUR
-#define RANSAC
+#define CONTOUR
+//#define RANSAC
 
 using namespace cv;
 using namespace std;
@@ -88,10 +88,10 @@ int main(int argc, char** argv) {
 
 	char cbuf[256] = { 0, };
 	Mat srcImage;
-	//rcImage = imread((const char*)"test6_R2.jpg", IMREAD_GRAYSCALE);
+	//srcImage = imread((const char*)"test1_R3.jpg", IMREAD_GRAYSCALE);
 	for (int i = 0; i < 8; i++)
 	{
-		sprintf(cbuf, "test%d_L.bmp", i + 1);
+		sprintf(cbuf, "test%d_R.bmp", i + 1);
 		srcImage = imread((const char*)cbuf, IMREAD_GRAYSCALE);
 #ifdef HOUGH
 		GetDistFromCircles((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 0, 40, 1.3, 1.7, i + 1);
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
 		GetDistFromCircles((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
 #endif
 #ifdef CONTOUR
-		GetDistFromContours((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 127, 5, 50000, 0, i + 1);
+		GetDistFromContours((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 169, 5, 50000, 0, i + 1);
 #endif
 #ifdef RANSAC
 		GetDistFromRANSAC((unsigned char*)srcImage.ptr(), 1280, 1024, i + 1);
@@ -316,7 +316,7 @@ int GetDistFromCircles
 
 	endtime = GetTickCount64();
 
-	printf("time : %d\n", endtime - starttime);
+	printf("HoughCircle time : %d\n", endtime - starttime);
 
 	if (local_dbThreshold_canny <= local_dbThershold_min_canny) return -1;
 
@@ -349,13 +349,15 @@ int GetDistFromCircles
 	
 		circle(dstImageCircle, PCenterOfCircle, r, Scalar(0, 0, 255), 2);
 		line(dstImageCircle, PCenterOfCircle, PCenterOfCircle, Scalar(0, 0, 255), 2);
-		
+		line(dstImageCircle, cv::Point2f(PCenterOfCircle.x - r, PCenterOfCircle.y), cv::Point2f(PCenterOfCircle.x + r, PCenterOfCircle.y), cv::Scalar(0, 0, 255), 2);
+		line(dstImageCircle, cv::Point2f(PCenterOfCircle.x, PCenterOfCircle.y - r), cv::Point2f(PCenterOfCircle.x, PCenterOfCircle.y + r), cv::Scalar(0, 0, 255), 2);
+
 		// 화면상의 중심으로부터 검출된 원의 중심사이의 거리 구하기 (X, Y) 픽셀단위
 		// 검출된 원 중심 - 화면상의 중심
 		(*pDistX) = (int)(PCenterOfCircle.x - PCenterOfScreen.x);
 		(*pDistY) = (int)(PCenterOfCircle.y - PCenterOfScreen.y);
 
-		printf("Distance from Circle : %d, %d\n", (*pDistX), (*pDistY));
+		printf("HoughCircle Distance from Circle : %d, %d\n", (*pDistX), (*pDistY));
 		//printf("Distance from Circle : %d, %d\n", PCenterOfCircle.x, PCenterOfCircle.y);
 	}
 
@@ -366,7 +368,7 @@ int GetDistFromCircles
 	//imshow("orgsrc", srcImage);
 	//imshow("GetCenterOfCircle", dstImageCircle);
 	char cArrFileName[100] = { 0, };
-	sprintf(cArrFileName, "test%d_L\\test%d.jpg", iIndex, iIndex);
+	sprintf(cArrFileName, "test%d_R\\test%d.jpg", iIndex, iIndex);
 	//sprintf(cArrFileName, "test1_R3\\test%d.jpg", iIndex);
 	imwrite(cArrFileName, dstImageCircle);
 	imshow(cArrFileName, dstImageCircle);
@@ -404,7 +406,6 @@ int GetDistFromContours
 	
 	if (iThresholdBlockSize < 3)
 		iThresholdBlockSize = 3;
-
 
 	int starttime = 0;
 	int endtime = 0;
@@ -471,7 +472,8 @@ int GetDistFromContours
 	double dbmin_ratio = (double)dbMinRatio * 0.1;
 	//Rect rc;
 	Point2f center;
-	float fradius;
+	Moments moment;
+	float fradius = 150;
 	vector<Point> approx;
 	for (vector<Point> &pts : contours)
 	{
@@ -485,16 +487,22 @@ int GetDistFromContours
 			dbratio = 4.0 * CV_PI * dbarea / (dblen * dblen);
 			if (dbmin_ratio < dbratio && dbmin_area < dbarea)
 			{
+				moment = moments(pts, false);
+				center.x = moment.m10 / moment.m00;
+				center.y = moment.m01 / moment.m00;
+
 				//rc = boundingRect(pts);
 				//rectangle(srcImage_color, rc, (0, 0, 255), 1);
-				minEnclosingCircle(pts, center, fradius);
-				circle(srcImage_color, center, (int)fradius, (0, 0, 255), 2, 8, 0);
+				//minEnclosingCircle(pts, center, fradius);
+				circle(srcImage_color, center, (int)fradius, cv::Scalar(0, 0, 255), 2, 8, 0);
+				line(srcImage_color, cv::Point2f(center.x - fradius, center.y), cv::Point2f(center.x + fradius, center.y), cv::Scalar(0, 0, 255), 2);
+				line(srcImage_color, cv::Point2f(center.x, center.y - fradius), cv::Point2f(center.x, center.y + fradius), cv::Scalar(0, 0, 255), 2);
 
 				// 검출된 원 중심 - 화면상의 중심
 				(*pDistX) = (int)(center.x - PCenterOfScreen.x);
 				(*pDistY) = (int)(center.y - PCenterOfScreen.y);
 
-				printf("Distance from Circle : %d, %d\n", (*pDistX), (*pDistY));
+				printf("findContours Distance from Circle : %d, %d\n", (*pDistX), (*pDistY));
 				bCheckDetection = true;
 
 			}
@@ -502,7 +510,7 @@ int GetDistFromContours
 	}
 
 	endtime = GetTickCount64();
-	printf("time : %d\n", endtime - starttime);
+	printf("findContours time : %d\n", endtime - starttime);
 
 	if (!bCheckDetection) return -1;
 
@@ -513,7 +521,7 @@ int GetDistFromContours
 
 	char cArrFileName[100] = { 0, };
 	sprintf(cArrFileName, "test%d_R\\contours%d.jpg", iIndex, iIndex);
-	//sprintf(cArrFileName, "test1_R2\\contours%d.jpg", iIndex);
+	//sprintf(cArrFileName, "test1_R3\\contours%d.jpg", iIndex);
 	imwrite(cArrFileName, srcImage_color);
 	imshow(cArrFileName, srcImage_color);
 
@@ -523,6 +531,7 @@ int GetDistFromContours
 
 	return 0;
 }
+
 
 
 // RANSAC (Random Sample Consensus) 알고리즘
@@ -654,8 +663,8 @@ int GetDistFromRANSAC
 	//line(srcImage_color, PCenterOfScreen, center, Scalar::all(0), 2);
 
 	char cArrFileName[100] = { 0, };
-	sprintf(cArrFileName, "test%d_L\\RANSAC%d.jpg", iIndex, iIndex);
-	//sprintf(cArrFileName, "test6_R2\\RANSAC%d.jpg", iIndex);
+	//sprintf(cArrFileName, "test%d_L\\RANSAC%d.jpg", iIndex, iIndex);
+	sprintf(cArrFileName, "test1_R\\RANSAC%d.jpg", iIndex);
 	imwrite(cArrFileName, color);
 	imshow(cArrFileName, color);
 
