@@ -89,22 +89,22 @@ int main(int argc, char** argv) {
 
 	char cbuf[256] = { 0, };
 	Mat srcImage;
-	//srcImage = imread((const char*)"test1_R3.jpg", IMREAD_GRAYSCALE);
+	//srcImage = imread((const char*)"test1_R2.jpg", IMREAD_GRAYSCALE);
 	for (int i = 0; i < 8; i++)
 	{
 		sprintf(cbuf, "test%d_R.bmp", i + 1);
 		srcImage = imread((const char*)cbuf, IMREAD_GRAYSCALE);
 #ifdef HOUGH
-		GetDistFromCircles((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1, 9999, 150, 0, 40, 1.3, 1.7, i + 1);
+		GetDistFromCircles((unsigned char*)srcImage.ptr(), CAMERA_WIDTH, CAMERA_HEIGHT, &iDistX, &iDistY, 1, 9999, 150, 0, 40, 1.3, 1.7, i + 1);
 #endif
 #ifdef HOUGH_ALT
-		GetDistFromCircles((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
+		GetDistFromCircles((unsigned char*)srcImage.ptr(), CAMERA_WIDTH, CAMERA_HEIGHT, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
 #endif
 #ifdef CONTOUR
-		GetDistFromContours((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 127, 20, 1, 70000, 0, i + 1);
+		GetDistFromContours((unsigned char*)srcImage.ptr(), CAMERA_WIDTH, CAMERA_HEIGHT, &iDistX, &iDistY, 127, 20, 1, 70000, 0, i + 1);
 #endif
 #ifdef RANSAC
-		GetDistFromRANSAC((unsigned char*)srcImage.ptr(), 1280, 1024, i + 1);
+		GetDistFromRANSAC((unsigned char*)srcImage.ptr(), CAMERA_WIDTH, CAMERA_HEIGHT, i + 1);
 #endif
 	}
 
@@ -422,7 +422,7 @@ int GetDistFromContours
 	int iCutStartX = 100;
 	int iCutStartY = 100;
 
-	srcImage = srcImage(cv::Rect(iCutStartX, iCutStartY, CAMERA_WIDTH - iCutStartX * 2, CAMERA_HEIGHT - iCutStartY * 2));
+	srcImage = srcImage(cv::Rect(iCutStartX, iCutStartY, iImageWidth - iCutStartX * 2, iImageHeight - iCutStartY * 2));
 
 	// 흑백 이미지 Blur 처리
 	Mat srcImage_blurred;
@@ -530,7 +530,7 @@ int GetDistFromContours
 
 	char cArrFileName[100] = { 0, };
 	sprintf(cArrFileName, "test%d_R\\contours%d.jpg", iIndex, iIndex);
-	//sprintf(cArrFileName, "test1_R3\\contours%d.jpg", iIndex);
+	//sprintf(cArrFileName, "test1_R2\\contours%d.jpg", iIndex);
 	imwrite(cArrFileName, srcImage_color);
 	imshow(cArrFileName, srcImage_color);
 
