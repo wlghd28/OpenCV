@@ -57,7 +57,8 @@ int GetDistFromContours
 	int* pDistX,
 	int* pDistY,
 	int iThresholdBlockSize,
-	double dbThresholdOffset,
+	double dbThresholdMaxOffset,
+	double dbThresholdMinOffset,
 	double dbMinArea,
 	double dbMinRatio,
 	int iIndex
@@ -100,7 +101,7 @@ int main(int argc, char** argv) {
 		GetDistFromCircles((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 1.5, 5, 300, 0.9, 1, 3, i);
 #endif
 #ifdef CONTOUR
-		GetDistFromContours((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 169, 5, 50000, 0, i + 1);
+		GetDistFromContours((unsigned char*)srcImage.ptr(), 1280, 1024, &iDistX, &iDistY, 127, 20, 1, 70000, 0, i + 1);
 #endif
 #ifdef RANSAC
 		GetDistFromRANSAC((unsigned char*)srcImage.ptr(), 1280, 1024, i + 1);
@@ -264,7 +265,7 @@ int GetDistFromCircles
 	int iCutStartX = 100;
 	int iCutStartY = 100;
 
-	srcImage = srcImage(cv::Rect(iCutStartX, iCutStartY, CAMERA_WIDTH - iCutStartX * 2, CAMERA_HEIGHT  - iCutStartY * 2));
+	//srcImage = srcImage(cv::Rect(iCutStartX, iCutStartY, CAMERA_WIDTH - iCutStartX * 2, CAMERA_HEIGHT  - iCutStartY * 2));
 
 	// 이미지 Blur 처리
 	Mat srcImage_blurred;
@@ -395,7 +396,8 @@ int GetDistFromContours
 	int* pDistX,
 	int* pDistY,
 	int iThresholdBlockSize,
-	double dbThresholdOffset,
+	double dbThresholdMaxOffset,
+	double dbThresholdMinOffset,
 	double dbMinArea,
 	double dbMinRatio,
 	int iIndex
@@ -440,29 +442,8 @@ int GetDistFromContours
 	cvtColor(srcImage, srcImage_color, COLOR_GRAY2BGR);
 	line(srcImage_color, PCenterOfScreen, PCenterOfScreen, Scalar::all(0), 2);
 
-
-	// 적응형 Threshold 적용
 	Mat srcImage_threshold;
-	//threshold(srcImage_blurred, srcImage_threshold, 169, 255, THRESH_BINARY_INV);
-	adaptiveThreshold(srcImage_blurred, srcImage_threshold, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, iThresholdBlockSize, dbThresholdOffset);
-
-	// 평활화
-	equalizeHist(srcImage_threshold, srcImage_threshold);
-
-	//imshow("threshold", srcImage_blurred);
-
-	// 등고선 찾기 (findContours) 
 	vector <vector<Point>> contours;
-	findContours(srcImage_threshold, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE/*CHAIN_APPROX_SIMPLE*/, Point(0, 0));
-
-	// 등고선 검출 실패
-	if (contours.size() <= 0) return -1;
-
-	// 찾은 등고선 그리기
-	//drawContours(srcImage_color, contours, -1, (255, 0, 0), 2);
-
-
-	// Approximate contours to polygons + get bounding rects and circles
 	bool bCheckDetection = false;
 	int ivtc = 0;
 	double dblen = 0;
@@ -475,38 +456,66 @@ int GetDistFromContours
 	Moments moment;
 	float fradius = 150;
 	vector<Point> approx;
-	for (vector<Point> &pts : contours)
+
+	char strThreshold[256] = { 0, };
+	sprintf(strThreshold, "threshold%d", iIndex);
+
+	double dbLoacl_ThrehsoldMaxOffset = dbThresholdMaxOffset;
+	double dbLoacl_ThrehsoldMinOffset = dbThresholdMinOffset;
+
+	while (dbLoacl_ThrehsoldMaxOffset >= dbLoacl_ThrehsoldMinOffset)
 	{
-		approxPolyDP(pts, approx, arcLength(pts, true) * 0.02, true);
+		// 적응형 Threshold 적용
 
-		ivtc = (int)approx.size();
-		if (4 < ivtc)
+		//threshold(srcImage_blurred, srcImage_threshold, 169, 255, THRESH_BINARY_INV);
+		adaptiveThreshold(srcImage_blurred, srcImage_threshold, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, iThresholdBlockSize, dbLoacl_ThrehsoldMaxOffset);
+
+		// 평활화
+		equalizeHist(srcImage_threshold, srcImage_threshold);
+
+		imshow(strThreshold, srcImage_threshold);
+
+		// 등고선 찾기 (findContours) 
+		findContours(srcImage_threshold, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE/*CHAIN_APPROX_SIMPLE*/, Point(0, 0));
+
+		// 찾은 등고선 그리기
+		//drawContours(srcImage_color, contours, -1, (255, 0, 0), 2);
+
+		// Approximate contours to polygons + get bounding rects and circles
+		for (vector<Point>& pts : contours)
 		{
-			dblen = arcLength(pts, true);
-			dbarea = contourArea(pts);
-			dbratio = 4.0 * CV_PI * dbarea / (dblen * dblen);
-			if (dbmin_ratio < dbratio && dbmin_area < dbarea)
+			approxPolyDP(pts, approx, arcLength(pts, true) * 0.02, true);
+
+			ivtc = (int)approx.size();
+			if (4 < ivtc)
 			{
-				moment = moments(pts, false);
-				center.x = moment.m10 / moment.m00;
-				center.y = moment.m01 / moment.m00;
+				dblen = arcLength(pts, true);
+				dbarea = contourArea(pts);
+				dbratio = 4.0 * CV_PI * dbarea / (dblen * dblen);
+				if (dbmin_ratio < dbratio && dbmin_area < dbarea)
+				{
+					moment = moments(pts, false);
+					center.x = moment.m10 / moment.m00;
+					center.y = moment.m01 / moment.m00;
 
-				//rc = boundingRect(pts);
-				//rectangle(srcImage_color, rc, (0, 0, 255), 1);
-				//minEnclosingCircle(pts, center, fradius);
-				circle(srcImage_color, center, (int)fradius, cv::Scalar(0, 0, 255), 2, 8, 0);
-				line(srcImage_color, cv::Point2f(center.x - fradius, center.y), cv::Point2f(center.x + fradius, center.y), cv::Scalar(0, 0, 255), 2);
-				line(srcImage_color, cv::Point2f(center.x, center.y - fradius), cv::Point2f(center.x, center.y + fradius), cv::Scalar(0, 0, 255), 2);
+					//rc = boundingRect(pts);
+					//rectangle(srcImage_color, rc, (0, 0, 255), 1);
+					//minEnclosingCircle(pts, center, fradius);
+					circle(srcImage_color, center, (int)fradius, cv::Scalar(0, 0, 255), 2, 8, 0);
+					line(srcImage_color, cv::Point2f(center.x - fradius, center.y), cv::Point2f(center.x + fradius, center.y), cv::Scalar(0, 0, 255), 2);
+					line(srcImage_color, cv::Point2f(center.x, center.y - fradius), cv::Point2f(center.x, center.y + fradius), cv::Scalar(0, 0, 255), 2);
 
-				// 검출된 원 중심 - 화면상의 중심
-				(*pDistX) = (int)(center.x - PCenterOfScreen.x);
-				(*pDistY) = (int)(center.y - PCenterOfScreen.y);
+					// 검출된 원 중심 - 화면상의 중심
+					(*pDistX) = (int)(center.x - PCenterOfScreen.x);
+					(*pDistY) = (int)(center.y - PCenterOfScreen.y);
 
-				printf("findContours Distance from Circle : %d, %d\n", (*pDistX), (*pDistY));
-				bCheckDetection = true;
-
+					printf("findContours Distance from Circle : %d, %d\n", (*pDistX), (*pDistY));
+					bCheckDetection = true;
+				}
 			}
 		}
+		if (bCheckDetection) break;
+		dbLoacl_ThrehsoldMaxOffset--;
 	}
 
 	endtime = GetTickCount64();
@@ -517,7 +526,7 @@ int GetDistFromContours
 
 	// 이미지 출력 (테스트용)
 	// 화면 중심과 원의 중심사이 직선을 긋는다. (테스트용)
-	line(srcImage_color, PCenterOfScreen, center, Scalar::all(0), 2);
+	//line(srcImage_color, PCenterOfScreen, center, Scalar::all(0), 2);
 
 	char cArrFileName[100] = { 0, };
 	sprintf(cArrFileName, "test%d_R\\contours%d.jpg", iIndex, iIndex);
